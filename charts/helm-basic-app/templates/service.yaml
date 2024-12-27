@@ -1,0 +1,26 @@
+{{ if .Values.service.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "basic-deployment.name" . }}
+  labels:
+    {{- include "basic-deployment.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}    
+spec:
+  selector:
+    app: {{ include "basic-deployment.name" . }}
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: 3000
+      protocol: TCP
+      name: http-metrics  
+  selector:
+    {{- include "basic-deployment.selectorLabels" . | nindent 4 }}
+{{- end }}

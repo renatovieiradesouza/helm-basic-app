@@ -1,0 +1,6 @@
+apiVersion: v2
+appVersion: 0.0.12
+description: A Helm chart for Techne Application
+name: helm-basic-app
+type: application
+version: 0.0.1
