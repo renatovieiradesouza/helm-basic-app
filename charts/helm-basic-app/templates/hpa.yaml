@@ -33,4 +33,17 @@ spec:
   {{- else }}
   targetCPUUtilizationPercentage: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
   {{- end }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Pods
+        value: 1 
+        periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 120 
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 300  
 {{- end }}

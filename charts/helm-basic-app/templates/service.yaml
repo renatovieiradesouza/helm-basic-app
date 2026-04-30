@@ -10,17 +10,26 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}    
 spec:
+  {{ if .Values.service.sessionAffinity.enabled -}}
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{ default 600 .Values.timeoutSeconds }}
+  {{- end }}
   selector:
     app: {{ include "basic-deployment.name" . }}
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: http
-      protocol: TCP
-      name: http
-    - port: 3000
-      protocol: TCP
-      name: http-metrics  
+  {{- range .Values.service.ports }}          
+    - name: {{ .name }}
+      port: {{ .port }}
+      {{- if .targetPort }}
+      targetPort: {{ .targetPort }}
+      {{- end }}
+  {{- end }}     
   selector:
     {{- include "basic-deployment.selectorLabels" . | nindent 4 }}
 {{- end }}
+
+
+

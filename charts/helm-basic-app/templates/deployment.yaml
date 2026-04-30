@@ -4,9 +4,11 @@ metadata:
   name: {{ include "basic-deployment.name" . }}
   labels:
     {{- include "basic-deployment.labels" . | nindent 4 }}
+  annotations:
+    reloader.stakater.com/auto: "true"
 spec:
-  revisionHistoryLimit: 3
-{{- if not .Values.autoscaling.enabled }}
+  revisionHistoryLimit: 1
+{{- if not .Values.keda.enabled }}
   replicas: {{ .Values.replicaCount }}
 {{- end }}
   selector:
@@ -26,6 +28,11 @@ spec:
       labels:
         {{- include "basic-deployment.selectorLabels" . | nindent 8 }}
     spec:
+      initContainers:
+      - name: init-config
+        image: 637103254392.dkr.ecr.us-east-1.amazonaws.com/lyceum-cloud/busybox:latest
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'echo "Waiting for ConfigMap..." && sleep 20']          
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -51,65 +58,25 @@ spec:
           command:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          env:
-            {{- toYaml .Values.env | nindent 12 }}
+          {{- include "basic-deployment.env" . | nindent 10 }}
+          {{- include "basic-deployment.envFrom" . | nindent 10 }}
 
-          {{- if .Values.envFrom }}
-          envFrom:
-          {{- range $i, $v := .Values.envFrom.configMaps }}
-          {{- if $v.data }}
-          - configMapRef:
-              name: {{ include "basic-deployment.name" $ }}-config-env-{{ default $i $v.name }}
-              optional: {{ default false $v.optional }}
-          {{ else if $v.name }}
-          - configMapRef:
-              name: {{ $v.name }}
-              optional: {{ default false $v.optional }}
-          {{- end }}
-          {{- end }}
-          {{- range $i, $v := .Values.envFrom.secrets }}
-          {{- if $v.data }}
-          - secretRef:
-              name: {{ include "basic-deployment.name" $ }}-secret-env-{{ default $i $v.name }}
-              optional: {{ default false $v.optional }}
-          {{ else if $v.name }}
-          - secretRef:
-              name: {{ $v.name }}
-              optional: {{ default false $v.optional }}
-          {{- end }}
-          {{- end }}
-          {{- end }}
-
-          {{ if not (eq (.Values.containerPort|int) 0) }}
+          # {{ if not (eq (.Values.containerPort|int) 0) }}
+          # ports:
+          # - name: http
+          #   containerPort: {{ .Values.containerPort|int }}
+          #   protocol: TCP
+          # {{- end }}
           ports:
-          - name: http
-            containerPort: {{ .Values.containerPort|int }}
-            protocol: TCP
+          {{- range .Values.containerPorts }}          
+            - name: {{ .name }}
+              containerPort: {{ .containerPort }}
           {{- end }}
           livenessProbe: {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe: {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          volumeMounts:
-          {{- if and .Values.secret.enabled (not (eq .Values.secret.mountPath "")) }}
-            - mountPath: {{ .Values.secret.mountPath }}
-              name: {{ .Release.Name }}-secret
-          {{- end }}
-          {{- range $i, $v := .Values.existingSecrets }}
-          {{- if and ( default "" $v.mountPath ) ( default "" $v.secretName ) }}
-            - mountPath: {{ $v.mountPath }}
-              name: {{ $v.secretName }}
-              subPath: {{ $v.subPath }}
-          {{- end }}
-          {{- end }}
-          {{- if and .Values.configMap.enabled (not (eq .Values.configMap.mountPath "")) }}
-            - mountPath: {{ .Values.configMap.mountPath }}
-              name: {{ .Release.Name }}-config
-          {{- end }}
-          {{- if .Values.storage.enabled }}
-            - mountPath: {{ .Values.storage.mountPath }}
-              name: {{ .Release.Name }}-data
-          {{- end }}
+          {{- include "basic-deployment.volumeMounts" . | nindent 10 }}
           {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -122,26 +89,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      volumes:
-      {{- if and .Values.secret.enabled (not (eq .Values.secret.mountPath "")) }}
-        - name: {{ .Release.Name }}-secret
-          secret:
-            secretName: {{ .Release.Name }}-secret
-      {{- end }}
-      {{- range $i, $v := .Values.existingSecrets }}
-      {{- if and ( default "" $v.mountPath ) ( default "" $v.secretName ) }}
-        - name: {{ $v.secretName }}
-          secret:
-            secretName: {{ $v.secretName }}
-      {{- end }}
-      {{- end }}
-      {{- if and .Values.configMap.enabled (not (eq .Values.configMap.mountPath "")) }}
-        - name: {{ .Release.Name }}-config
-          configMap:
-            name: {{ .Release.Name }}-config
-      {{- end }}
-      {{- if .Values.storage.enabled }}
-        - name: {{ .Release.Name }}-data
-          persistentVolumeClaim:
-            claimName: {{ .Release.Name }}-data
-      {{- end }}
+      {{- include "basic-deployment.volumes" . | nindent 6 }}

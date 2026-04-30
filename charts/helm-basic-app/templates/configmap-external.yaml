@@ -1,0 +1,11 @@
+{{- if .Values.configMapExternal.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "basic-deployment.name" . }}-config-external
+data:
+  {{- range $path, $fileContents := .Files.Glob (printf "%s/%s" .Values.configMapExternal.directory .Values.configMapExternal.filePattern) }}
+  {{ base $path }}: |
+    {{ tpl ($fileContents | toString) . | indent 4 }}
+  {{- end }}
+{{- end }}

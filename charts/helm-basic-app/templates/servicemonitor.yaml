@@ -5,15 +5,15 @@ metadata:
   labels:
     release: monitoring
   name: {{ include "basic-deployment.name" . }}
-  namespace: {{ include "basic-deployment.name" . }}
+  namespace: {{ $.Release.Namespace }}
 spec:
   endpoints:
   - interval: {{ .Values.serviceMonitor.interval | default "30s" }}
-    targetPort: {{ .Values.serviceMonitor.targetPort | default "3000" }}
-    path: {{ .Values.serviceMonitor.path | default "/metrics"  }}
+    targetPort: {{ .Values.serviceMonitor.targetPort | default "8081" }}
+    path: {{ .Values.serviceMonitor.path | default "/actuator/prometheus"  }}
   namespaceSelector:
     matchNames:
-    - {{ include "basic-deployment.name" . }}
+    - {{ $.Release.Namespace }}
   selector:
     matchLabels:
       app: {{ include "basic-deployment.name" . }}

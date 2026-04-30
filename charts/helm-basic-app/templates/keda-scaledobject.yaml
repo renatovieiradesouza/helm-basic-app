@@ -1,0 +1,25 @@
+{{- if .Values.keda.enabled -}}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name:  {{ include "basic-deployment.name" . }}
+  annotations:
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"     # Optional. Use to transfer an existing HPA ownership to this ScaledObject
+    validations.keda.sh/hpa-ownership: "true"               # Optional. Use to disable HPA ownership validation on this ScaledObject                  # Optional. Use to pause autoscaling of objects explicitly  
+  labels:
+    {{- include "basic-deployment.labels" . | nindent 4 }}  
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "basic-deployment.name" . }}
+  minReplicaCount: {{ .Values.keda.minReplicaCount }}
+  maxReplicaCount: {{ .Values.keda.maxReplicaCount }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod }}
+  pollingInterval: {{ .Values.keda.pollingInterval }}
+  triggers:
+  {{- toYaml .Values.keda.triggers | nindent 4 }}
+  #fallback:  # Qualquer problema no seu cluster que impeça o HPA de funcionar, essa regra será ativada
+  #  failureThreshold: {{ .Values.keda.failureThreshold | default "2" }} # Quantas vezes o HPA pode falhar antes de ativar o fallback
+  #  replicas: {{ .Values.keda.minReplicaCount | default "1" }}  # Define a quantidade de réplicas quando a métrica não está disponível  
+{{- end }}

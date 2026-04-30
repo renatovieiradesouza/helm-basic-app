@@ -1,24 +1,98 @@
-{{- range .Values.hooks -}}
+{{- range $hook := .Values.hooks -}}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "basic-deployment.name" $ }}-{{ .name }}
+  name: {{ include "basic-deployment.name" $ }}-{{ $hook.name }}
   labels:
     app.kubernetes.io/managed-by: {{ $.Release.Service | quote }}
     app.kubernetes.io/instance: {{ $.Release.Name | quote }}
     helm.sh/chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
   annotations:
-    "helm.sh/hook": {{ .hooks | join "," }}
-    "helm.sh/hook-weight": "{{ default 0 .weight }}"
-    "helm.sh/hook-delete-policy": {{ .delete_policy }}
+    {{- if $hook.argocd }}
+    argocd.argoproj.io/hook: {{ default "Sync" $hook.argocd.hook | quote }}
+    argocd.argoproj.io/hook-delete-policy: {{ default "BeforeHookCreation" $hook.argocd.deletePolicy | quote }}
+    argocd.argoproj.io/sync-wave: {{ default "0" $hook.argocd.syncWave | quote }}
+    {{- else }}
+    "helm.sh/hook": {{ $hook.hooks | join "," }}
+    "helm.sh/hook-weight": "{{ default 0 $hook.weight }}"
+    "helm.sh/hook-delete-policy": {{ $hook.delete_policy }}
+    {{- end }}
+    {{- if $hook.annotations }}
+    {{- toYaml $hook.annotations | nindent 4 }}
+    {{- end }}
 spec:
   template:
     metadata:
-      name: {{ include "basic-deployment.name" $ }}-{{ .name }}
+      name: {{ include "basic-deployment.name" $ }}-{{ $hook.name }}
       labels:
         app.kubernetes.io/managed-by: {{ $.Release.Service | quote }}
         app.kubernetes.io/instance: {{ $.Release.Name | quote }}
         helm.sh/chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
     spec:
-      {{- toYaml .spec | nindent 6 }}
+      {{- if $hook.useGlobalConfig }}
+      {{- include "basic-deployment.volumes" $ | nindent 6 }}
+      {{- else if $hook.spec.volumes }}
+      volumes:
+        {{- toYaml $hook.spec.volumes | nindent 8 }}
+      {{- end }}
+      containers:
+      {{- range $hook.spec.containers }}
+      - name: {{ .name }}
+        image: {{ .image }}
+        {{- if .imagePullPolicy }}
+        imagePullPolicy: {{ .imagePullPolicy }}
+        {{- end }}
+        {{- if .command }}
+        command:
+          {{- toYaml .command | nindent 10 }}
+        {{- end }}
+        {{- if .args }}
+        args:
+          {{- toYaml .args | nindent 10 }}
+        {{- end }}
+        {{- if $hook.useGlobalConfig }}
+        {{- include "basic-deployment.env" $ | nindent 8 }}
+        {{- include "basic-deployment.envFrom" $ | nindent 8 }}
+        {{- include "basic-deployment.volumeMounts" $ | nindent 8 }}
+        {{- else }}
+        {{- if .env }}
+        env:
+          {{- toYaml .env | nindent 10 }}
+        {{- end }}
+        {{- if .envFrom }}
+        envFrom:
+          {{- toYaml .envFrom | nindent 10 }}
+        {{- end }}
+        {{- if .volumeMounts }}
+        volumeMounts:
+          {{- toYaml .volumeMounts | nindent 10 }}
+        {{- end }}
+        {{- end }}
+        {{- if .resources }}
+        resources:
+          {{- toYaml .resources | nindent 10 }}
+        {{- end }}
+        {{- if .securityContext }}
+        securityContext:
+          {{- toYaml .securityContext | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if $hook.spec.restartPolicy }}
+      restartPolicy: {{ $hook.spec.restartPolicy }}
+      {{- end }}
+      {{- if $hook.spec.serviceAccountName }}
+      serviceAccountName: {{ $hook.spec.serviceAccountName }}
+      {{- end }}
+      {{- if $hook.spec.nodeSelector }}
+      nodeSelector:
+        {{- toYaml $hook.spec.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if $hook.spec.affinity }}
+      affinity:
+        {{- toYaml $hook.spec.affinity | nindent 8 }}
+      {{- end }}
+      {{- if $hook.spec.tolerations }}
+      tolerations:
+        {{- toYaml $hook.spec.tolerations | nindent 8 }}
+      {{- end }}
 {{- end }}

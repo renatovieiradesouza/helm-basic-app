@@ -29,13 +29,13 @@ spec:
   tls:
     - hosts:
         {{- range .Values.ingress.hosts }}
-        - {{ .name }}
+        - "{{ .name }}"
         {{- end }}
       secretName: {{ .Values.ingress.tls.secretName }}
   {{- end }}
   rules:
     {{- range .Values.ingress.hosts }}
-    - host: {{ .name }}
+    - host: "{{ .name }}"
       http:
         paths:
           - path: {{ .path }}
@@ -47,7 +47,7 @@ spec:
               service:
                 name: {{ include "basic-deployment.name" $ }}
                 port:
-                  name: http
+                  name: http-port
               {{- else }}
               serviceName: {{ include "basic-deployment.name" $ }}
               servicePort: http
