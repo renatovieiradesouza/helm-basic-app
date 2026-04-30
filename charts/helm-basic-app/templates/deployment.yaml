@@ -30,7 +30,7 @@ spec:
     spec:
       initContainers:
       - name: init-config
-        image: 637103254392.dkr.ecr.us-east-1.amazonaws.com/lyceum-cloud/busybox:latest
+        image: busybox:latest
         imagePullPolicy: IfNotPresent
         command: ['sh', '-c', 'echo "Waiting for ConfigMap..." && sleep 20']          
       {{- with .Values.imagePullSecrets }}
