@@ -3,4 +3,4 @@ appVersion: 0.0.12
 description: A Helm chart for Techne Application
 name: helm-basic-app
 type: application
-version: 0.0.2
+version: 0.0.3

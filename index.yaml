@@ -3,7 +3,17 @@ entries:
   helm-basic-app:
   - apiVersion: v2
     appVersion: 0.0.12
-    created: "2026-04-30T18:08:51.711510635-03:00"
+    created: "2026-04-30T18:13:09.730124564-03:00"
+    description: A Helm chart for Techne Application
+    digest: e8eaa0ed2958830c1d12661b8ee52847f57b676666c63c741e4096708beb6abf
+    name: helm-basic-app
+    type: application
+    urls:
+    - https://renatovieiradesouza.github.io/helm-basic-app/helm-basic-app-0.0.3.tgz
+    version: 0.0.3
+  - apiVersion: v2
+    appVersion: 0.0.12
+    created: "2026-04-30T18:13:09.728388816-03:00"
     description: A Helm chart for Techne Application
     digest: aea360e5fd542ba4cf6aabdbf090684fad6ecce0a91f70016c186d4dc4368668
     name: helm-basic-app
@@ -13,7 +23,7 @@ entries:
     version: 0.0.2
   - apiVersion: v2
     appVersion: 0.0.12
-    created: "2026-04-30T18:08:51.708932339-03:00"
+    created: "2026-04-30T18:13:09.727966879-03:00"
     description: A Helm chart for Techne Application
     digest: bd4fafc5f01d447ab336afca4393079f9460fea323f63ba263e38b93bda5ab08
     name: helm-basic-app
@@ -21,4 +31,4 @@ entries:
     urls:
     - https://renatovieiradesouza.github.io/helm-basic-app/helm-basic-app-0.0.1.tgz
     version: 0.0.1
-generated: "2026-04-30T18:08:51.708364215-03:00"
+generated: "2026-04-30T18:13:09.727436766-03:00"

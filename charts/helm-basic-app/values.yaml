@@ -23,9 +23,22 @@ command: []
 
 args: []
 
+# Liquidabase initContainer
+initLiquibase:
+  enabled: false
+  # args:
+  #   - "-Duser.timezone=UTC"
+  #   - "-cp"
+  #   - "/app/resources:/app/classes:/app/libs/*"
+  #   - "cloud.lyceum.api.gateway.cartao.GatewayCartaoApplication"
+  #   - "dbinit"
+
 env: []
 
 envFrom: {}
+#  configMaps:
+#  - name: ms-console-external
+#    optional: false 
 #  configMaps:
 #  - name: myconfig
 #    optional: false
@@ -40,11 +53,6 @@ envFrom: {}
 #      USERNAME: plaintext-username
 #      PASSWORD: plaintext-password
 #    optional: false
-
-imagePullSecrets: []
-
-#- name: azure-container-registry-credentials
-
 podAnnotations: {}
 
 podSecurityContext: {}
@@ -58,7 +66,11 @@ securityContext: {}
   #   drop:
   #   - ALL
 
-containerPort: 8080
+containerPorts: {}
+  # - name: http-port
+  #   containerPort: 8080
+  # - name: management-port
+  #   containerPort: 8081
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -78,6 +90,21 @@ resources: {}
 
 serviceAccount: {}
 
+########################
+##   VolumesTOApps    ##
+######################## 
+  # Usar para criar volume padrão na pasta /config
+  # volumeMounts:
+  # - name: config
+  #   mountPath: /config            
+
+  # volumes:
+  # - name: config
+  #   configMap:
+  #     name: ms-console-config  
+  # Uso exclusivo para microserviços
+volumesMount:
+  enabled: false
 
 ################
 ##    HPA     ##
@@ -89,6 +116,40 @@ autoscaling:
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
+
+#######################
+##    HPA COM KEDA   ##
+#######################
+
+keda:
+  enabled: true
+  pollingInterval: 30
+  minReplicaCount: 1
+  maxReplicaCount: 1
+  cooldownPeriod: 300
+  # triggers:
+  #   - type: cpu
+  #     metricType: Utilization # Allowed types are 'Utilization' or 'AverageValue'
+  #     metadata:
+  #       value: "80"     
+  #   - type: memory
+  #     metricType: Utilization # Allowed types are 'Utilization' or 'AverageValue'
+  #     metadata:
+  #       value: "80"   
+  #   # Recomendado para ambiente produtivo, reduzir a carga fora do horário comercial ou manter uma carga fixa      
+  #   - type: cron
+  #     metadata:
+  #       timezone: "America/Sao_Paulo"
+              ##   ┌────────── minuto (0 - 59)
+              ## │ ┌──────── hora (0 - 23)
+              ## │ │ ┌────── dia do mês (* = qualquer dia)
+              ## │ │ │ ┌──── mês (* = qualquer mês)
+              ## │ │ │ │ ┌── dia da semana (0 = domingo, 6 = sábado)
+              ## │ │ │ │ │
+              ## │ │ │ │ │
+  #       start: "0 5 * * 1-5"
+  #       end: "0 20 * * 1-5"
+  #       desiredReplicas: "1"
 
 nodeSelector: {}
 
@@ -108,14 +169,36 @@ readinessProbe: null
 service:
   enabled: true
   type: ClusterIP
-  port: 80
+  ports: {}
+    # - name: http-port
+    #   port: 80
+    #   targetPort: 8080
+    # - name: management-port
+    #   port: 8081  
   annotations: {}
+  sessionAffinity:
+    enabled: false
+#  sessionAffinity:
+#    enabled: true
+#    timeoutSeconds: 1200 # (optional: default 600)
 
 serviceMonitor:
   enabled: true
-  interval: 30s
-  targetPort: 80
-  path: /metrics
+
+######################
+## External Secrets ##
+######################
+
+externalSecrets:
+  enabled: false
+  refreshInterval: "1m"
+  secretStoreRef: "secretstore-eks"
+
+# Usar em conjunto com external secrets
+# envFrom:
+#  secrets:
+#  - name: ui-console
+#    optional: false  
 
 ###################
 ## Configuration ##
@@ -125,6 +208,11 @@ configMap:
   enabled: false
   mountPath: ""
   data: {}
+
+configMapExternal:
+  enabled: false
+  directory: "files"
+  filePattern: "*.yaml"
 
 secret:
   enabled: false
@@ -206,12 +294,14 @@ ingress:
 # test	Executes when the Helm test subcommand is invoked ( view test docs)
 
 hooks: []
+# Exemplo 1: usando hooks do Helm (modo legado, não recomendado com Argo CD)
 #- name: migrate-db
 #  hooks:
 #  - pre-install
 #  - pre-upgrade
 #  weight: 1
 #  delete_policy: before-hook-creation
+#  useGlobalConfig: true  # Use global env, envFrom, volumes and volumeMounts from values.yaml
 #  spec:
 #    restartPolicy: Never
 #    containers:
@@ -220,3 +310,46 @@ hooks: []
 #      command:
 #      - /bin/sleep
 #      - 5
+#      # If useGlobalConfig: false, you can specify individual env, envFrom, volumeMounts
+#      # env:
+#      # - name: DB_HOST
+#      #   value: "localhost"
+#      # envFrom:
+#      # - configMapRef:
+#      #     name: my-config
+#      # volumeMounts:
+#      # - name: config
+#      #   mountPath: /config
+#      # resources:
+#      #   limits:
+#      #     memory: "128Mi"
+#      #     cpu: "500m"
+#      #   requests:
+#      #     memory: "64Mi"
+#      #     cpu: "250m"
+#  # If useGlobalConfig: false, you can also specify volumes at spec level
+#  # spec:
+#  #   volumes:
+#  #   - name: config
+#  #     configMap:
+#  #       name: my-config
+#
+# Exemplo 2: usando hooks do Argo CD (recomendado quando for deploy via Argo)
+#- name: liquibase-init
+#  argocd:
+#    hook: PreSync
+#    deletePolicy: BeforeHookCreation,HookSucceeded
+#    syncWave: "1"
+#  useGlobalConfig: true  # Usa env, envFrom e volumes globais
+#  spec:
+#    restartPolicy: Never
+#    containers:
+#    - name: liquibase
+#      image: "meu-repo/minha-imagem:tag"
+#      command: ["java"]
+#      args:
+#        - "-Duser.timezone=UTC"
+#        - "-cp"
+#        - "/app/resources:/app/classes:/app/libs/*"
+#        - "MinhaSpringBootApplication"
+#        - "dbinit"
